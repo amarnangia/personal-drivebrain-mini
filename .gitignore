@@ -1,3 +1,5 @@
 build/
 CMakeUserPresets.json
 solutions/
+ref/
+recordings/
