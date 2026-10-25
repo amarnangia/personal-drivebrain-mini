@@ -8,6 +8,8 @@
 #include <thread>
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
+#include <cmath>
+#include <memory>
 
 std::atomic<bool> running{true};
 
@@ -34,7 +36,27 @@ int main() {
   std::chrono::microseconds loop_time_ms((int) (loop_time * 1000000.0f));
   auto next_tick = std::chrono::steady_clock::now();
 
+  // I ADDED: FAKE STATE UNTIL WE AHVE REAL DATA
+  double fake_pulses = 0.0;
+  uint64_t tick = 0;
+
   while(running) {
+
+     // fake a flow that slowly swings between 20 and 80 Hz (about a 6 s period)
+    double fake_freq_hz = 50.0 + 30.0 * std::sin(tick * loop_time);
+    fake_pulses += fake_freq_hz * loop_time;
+    tick++;
+
+    auto msg = std::make_shared<drivebrain_msgs::FlowmeterData>();
+    msg->set_total_pulses(static_cast<uint64_t>(fake_pulses));
+    msg->set_last_pulse_timestamp_ns(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+    msg->set_frequency_hz(fake_freq_hz);
+    msg->set_missed_events(0);
+
+    core::FoxgloveServer::instance().send_live_telem_msg(msg);
+    core::MCAPLogger::instance().log_msg(msg);
 
     next_tick += loop_time_ms;
 

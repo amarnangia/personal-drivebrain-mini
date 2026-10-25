@@ -2,4 +2,9 @@ syntax = "proto3";
 
 package drivebrain_msgs;
 
-// Add your messages here
+message FlowmeterData {
+  uint64 total_pulses            = 1;  // raw: every rising edge since startup
+  uint64 last_pulse_timestamp_ns = 2;  // raw: kernel timestamp of the latest edge
+  double frequency_hz            = 3;  // derived: 1 / time between recent pulses
+  uint64 missed_events           = 4;  // health: gaps in line_seqno
+}
