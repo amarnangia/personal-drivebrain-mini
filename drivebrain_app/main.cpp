@@ -1,6 +1,7 @@
 #include <FoxgloveServer.hpp>
 #include <MCAPLogger.hpp>
 #include <drivebrain_msgs.pb.h>
+#include <FlowmeterComms.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -30,6 +31,17 @@ int main() {
   core::MCAPLogger::instance().open_new_mcap();
   core::MCAPLogger::instance().init_logging();
 
+  //main own the queu, sot he driver pushes into it 
+  //consumer thread will eventually pop form it. Must outlive both threads, so we put it here
+  core::ThreadSafeDeque<comms::FlowmeterPulse> pulse_queue;
+
+  //TO DO: REPLACE WITH THE REAL CHIP AND LINE 
+  comms::FlowmeterComms flowmeter(pulse_queue, "/dev/gpiochip0", 4);
+  if (!flowmeter.start()) {
+    //keep running os our loggings an dfake data work when testing 
+    spdlog::error("Failed to start flowmeter driver, continuing with fake data");
+  }
+
   spdlog::info("Constructed logging singletons");
 
   auto loop_time = 0.004;
@@ -46,6 +58,13 @@ int main() {
     double fake_freq_hz = 50.0 + 30.0 * std::sin(tick * loop_time);
     fake_pulses += fake_freq_hz * loop_time;
     tick++;
+
+    //for hase 4, once a second (250 ticsk x 4 ms, we will report how mayn pulses have arrives adn then clear them. We will replace this durign phase 5
+    if (tick % 250 == 0) {
+      std::lock_guard lock(pulse_queue.mtx);
+      spdlog::info("Pulses in last second: {}", pulse_queue.deque.size());
+      pulse_queue.deque.clear();
+    }
 
     auto msg = std::make_shared<drivebrain_msgs::FlowmeterData>();
     msg->set_total_pulses(static_cast<uint64_t>(fake_pulses));
@@ -69,6 +88,10 @@ int main() {
     std::this_thread::sleep_until(next_tick);
   }
 
+  //this stops and join our thread before the loggers are destroyed, destructor only does thait at the end of main after destroy 
+  flowmeter.stop();
+
+  
   core::MCAPLogger::instance().destroy();
   core::FoxgloveServer::instance().destroy();
   spdlog::info("Logging singletons safely destroyed");

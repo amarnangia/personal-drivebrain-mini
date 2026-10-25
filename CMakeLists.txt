@@ -7,6 +7,8 @@ find_package(foxglove-websocket REQUIRED)
 find_package(mcap REQUIRED)
 find_package(spdlog REQUIRED)
 
+add_subdirectory(drivebrain_comms)    # runs drivebrain_comms/CMakeLists.txt
+
 # Add your source files here
 add_executable(mini-drivebrain
     drivebrain_app/main.cpp
@@ -20,6 +22,7 @@ protobuf_generate(TARGET mini-drivebrain IMPORT_DIRS proto)
 
 target_include_directories(mini-drivebrain PRIVATE drivebrain_core/include ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(mini-drivebrain PRIVATE
+    drivebrain_comms                  # links the flowmeter driver into the program
     foxglove-websocket::foxglove-websocket
     mcap::mcap
     spdlog::spdlog
