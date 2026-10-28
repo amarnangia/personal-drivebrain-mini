@@ -3,3 +3,8 @@ CMakeUserPresets.json
 solutions/
 ref/
 recordings/
+
+# local notes, never committed
+*.md
+!README.md
+!nixos/README.md
